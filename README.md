@@ -222,7 +222,7 @@ This project is licensed under the **MIT License** — see the [LICENSE](LICENSE
 
 If you use **MITOCLIN** in your research or clinical diagnostics, please cite:
 
-> Eerapagula, R., Yadav, A., & Mahato, A. K. (2026). *MITOCLIN: An Integrated Web Server and Automated Pipeline for High-Resolution Mitochondrial Genome Analysis, Heteroplasmy Quantification, and Clinical Pathogenicity Annotation*. Laboratory of Human Molecular Genetics, Centre for DNA Fingerprinting and Diagnostics (CDFD), Hyderabad, India.
+> Eerapagula, R., Yadav, A., & Mahato, A. K. (2026). *MITOCLIN: An Integrated Web Server and Automated Pipeline for High-Resolution Mitochondrial Genome Analysis, Heteroplasmy Quantification, and Clinical Pathogenicity Annotation*. Laboratory of Genome Informatics, Centre for DNA Fingerprinting and Diagnostics (CDFD), Hyderabad, India.
 
 - **Institution**: Centre for DNA Fingerprinting and Diagnostics (CDFD), Hyderabad, Telangana, India
 - **Repository**: [github.com/lgi-cdfd/mitoclin](https://github.com/lgi-cdfd/mitoclin)
