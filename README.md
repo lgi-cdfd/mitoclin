@@ -32,7 +32,7 @@
 
 ## Overview
 
-**MITOCLIN** is an end-to-end, automated web application and computational pipeline developed at the **Laboratory of Human Molecular Genetics (LHMG), Centre for DNA Fingerprinting and Diagnostics (CDFD), Hyderabad, India**.
+**MITOCLIN** is an end-to-end, automated web application and computational pipeline developed at the **Laboratory of Genome Informatics (LGI), Centre for DNA Fingerprinting and Diagnostics (CDFD), Hyderabad, India**.
 
 It bridges the gap between raw high-throughput Next-Generation Sequencing (NGS) data and actionable clinical insights by integrating sequence quality control, reference alignment, high-sensitivity variant calling, heteroplasmy quantification, contamination assessment, variant origin classification, disease annotation, and interactive clinical reporting into a unified workflow.
 
