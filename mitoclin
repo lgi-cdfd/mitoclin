@@ -2,7 +2,7 @@
 
 # ==============================================================================
 # MITOCLIN: Mitochondrial Genome Analysis & NUMT-Aware Variant Pipeline
-# Laboratory of Human Molecular Genetics (LHMG)
+# Laboratory of Genome Informatics (LGI)
 # Centre for DNA Fingerprinting and Diagnostics (BRIC-CDFD), Hyderabad, India
 # ==============================================================================
 
@@ -39,7 +39,7 @@ print_banner() {
     cat << "EOF"
 ================================================================================
 MITOCLIN: Mitochondrial Genome Analysis & Clinical Variant Calling Pipeline
-Laboratory of Human Molecular Genetics, BRIC-CDFD
+Laboratory of Genome Informatics, BRIC-CDFD
 Version: 2.1.0
 ================================================================================
 EOF

@@ -1,8 +1,8 @@
 	#!/bin/bash
 
 ############################################
-# mtDNA Variant Calling Pipeline v2.0
-# CDFD — Mitochondrial Genome Analysis
+# mtDNA Variant Calling Pipeline v2.1
+# CDFD — Laboratory of Genome Informatics (LGI)
 #
 # Fixes vs previous version:
 #  - Proper step timing + tee logging
@@ -219,7 +219,7 @@ fi
 ############################################
 
 run_command \
-    "fastqc \"$R1\" \"$R2\" -o \"$OUT_DIR/01_raw_fastqc\" -t $THREADS" \
+    "fastqc -t $THREADS --outdir \"$OUT_DIR/01_raw_fastqc\" \"$R1\" \"$R2\"" \
     "$LOG_DIR/01_fastqc.log" \
     "FastQC"
 
@@ -258,7 +258,7 @@ TRIM_R2="$OUT_DIR/02_trimmed/${SAMPLE}_R2_trimmed.fastq.gz"
 mkdir -p "$OUT_DIR/02_trimmed_fastqc"
 
 run_command \
-    "fastqc \"$TRIM_R1\" \"$TRIM_R2\" -o \"$OUT_DIR/02_trimmed_fastqc\" -t $THREADS" \
+    "fastqc -t $THREADS --outdir \"$OUT_DIR/02_trimmed_fastqc\" \"$TRIM_R1\" \"$TRIM_R2\"" \
     "$LOG_DIR/02b_trimmed_fastqc.log" \
     "Trimmed FastQC"
 
