@@ -281,14 +281,14 @@ MITOCLIN’s analytical accuracy and NUMT-depletion capabilities were benchmarke
 
 If you use MITOCLIN in your research, please cite:
 
-> **MITOCLIN: An Automated Computational Pipeline and Web Platform for Clinical Mitochondrial Genome Analysis and NUMT-Purified Variant Calling.**  
-> Laboratory of Human Molecular Genetics (LHMG),  
+> **MITOCLIN: an integrated and reproducible computational framework for comprehensive mitochondrial genome analysis and clinical interpretation from next-generation sequencing data**  
+> Laboratory of Genome Informatics (LGI),  
 > Centre for DNA Fingerprinting and Diagnostics (BRIC-CDFD), Hyderabad, Telangana, India.  
 > Repository: [https://github.com/lgi-cdfd/mitoclin](https://github.com/lgi-cdfd/mitoclin)
 
 For inquiries, clinical collaboration, or bug reports, please contact:
-* **Dr. Ajay Kumar Mahato** (Principal Investigator / Corresponding Author): `ajay@cdfd.org.in`
-* **Laboratory of Human Molecular Genetics (LHMG)**, BRIC-CDFD, Hyderabad, India.
+* **Dr. Ajay Kumar Mahato** (Principal Investigator / Corresponding Author): `akmahato@cdfd.org.in`
+* **Laboratory of Genome Informatics (LGI)**, BRIC-CDFD, Hyderabad, India.
 
 ---
 
