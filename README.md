@@ -2,7 +2,7 @@
 
 ### Automated Mitochondrial Genome Analysis and NUMT-Purified Variant Calling Framework
 
-Laboratory of Human Molecular Genetics (LHMG)  
+Laboratory of Genome Informatics (LGI)  
 Centre for DNA Fingerprinting and Diagnostics (BRIC-CDFD), Hyderabad, India  
 
 ---
