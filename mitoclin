@@ -1,0 +1,274 @@
+#!/usr/bin/env bash
+
+# ==============================================================================
+# MITOCLIN: Mitochondrial Genome Analysis & NUMT-Aware Variant Pipeline
+# Laboratory of Human Molecular Genetics (LHMG)
+# Centre for DNA Fingerprinting and Diagnostics (BRIC-CDFD), Hyderabad, India
+# ==============================================================================
+
+set -euo pipefail
+
+VERSION="2.1.0"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_DIR="$SCRIPT_DIR"
+
+# Source default reference and database locations
+DEFAULT_NUMT_REF="$REPO_DIR/reference/rCRS_plus_NUMTs.fasta"
+DEFAULT_RCRS_REF="$REPO_DIR/reference/rCRS.fasta"
+DEFAULT_DB_DIR="$REPO_DIR/database"
+
+# Add repository tools, system paths, and conda environments to PATH (higher priority first)
+for TOOL_DIR in \
+    "/usr/bin" \
+    "/usr/local/bin" \
+    "/media/ramesh/LGI/softwares" \
+    "/media/ramesh/LGI/softwares/TrimGalore-0.6.11" \
+    "/media/ramesh/LGI/softwares/gatk-4.6.2.0" \
+    "$HOME/bin" \
+    "$HOME/miniconda3/bin" \
+    "$HOME/anaconda3/bin" \
+    "$CONDA_PREFIX/bin" \
+    "$REPO_DIR/tools" \
+    "$REPO_DIR/tools/haplocheck"; do
+    if [[ -d "$TOOL_DIR" ]]; then
+        export PATH="$TOOL_DIR:$PATH"
+    fi
+done
+
+print_banner() {
+    cat << "EOF"
+================================================================================
+MITOCLIN: Mitochondrial Genome Analysis & Clinical Variant Calling Pipeline
+Laboratory of Human Molecular Genetics, BRIC-CDFD
+Version: 2.1.0
+================================================================================
+EOF
+}
+
+usage() {
+    print_banner
+    cat << EOF
+Usage:
+  mitoclin [options] -s <sample_id> -1 <r1.fastq.gz> -2 <r2.fastq.gz>
+  mitoclin run <sample_id> <r1.fastq.gz> <r2.fastq.gz> [output_dir] [reference_fasta]
+
+Required Arguments:
+  -s, --sample       Sample identifier (alphanumeric, dashes, underscores)
+  -1, --r1           Path to forward paired-end FASTQ (.fastq, .fq, .gz)
+  -2, --r2           Path to reverse paired-end FASTQ (.fastq, .fq, .gz)
+
+Optional Arguments:
+  -o, --outdir       Output directory (default: ./output_<sample_id>)
+  -r, --reference    Reference genome FASTA:
+                       numt  : rCRS + 766 nuclear NUMT decoy contigs [RECOMMENDED]
+                       rcrs  : Revised Cambridge Reference Sequence (NC_012920.1)
+                       <path>: Custom indexed reference FASTA
+                     (default: rCRS_plus_NUMTs.fasta)
+  -t, --threads      Number of CPU threads for alignment & calling (default: 4)
+  --min-vaf          Minimum Variant Allele Fraction cutoff (default: 0.01 / 1%)
+  --check-env        Verify required bioinformatics tools and environment
+  -v, --version      Display version information
+  -h, --help         Display this help manual
+
+Examples:
+  # 1. Run pipeline using default NUMT-aware competitive alignment:
+  ./mitoclin -s Patient01 -1 data/P01_R1.fq.gz -2 data/P01_R2.fq.gz
+
+  # 2. Run pipeline with custom output directory and 8 threads:
+  ./mitoclin -s Patient01 -1 data/P01_R1.fq.gz -2 data/P01_R2.fq.gz -o results/P01 -t 8
+
+  # 3. Positional shorthand execution:
+  ./mitoclin run Patient01 data/P01_R1.fq.gz data/P01_R2.fq.gz
+
+  # 4. Run test dataset bundled with repository:
+  bash example/run_example.sh
+
+EOF
+    exit 0
+}
+
+check_dependencies() {
+    echo "================================================================================"
+    echo "Checking MITOCLIN System Dependencies and Software Binaries"
+    echo "================================================================================"
+    
+    local all_passed=1
+    local tools=("bwa" "samtools" "bcftools" "fastqc" "trim_galore" "gatk" "python3" "java")
+    
+    for tool in "${tools[@]}"; do
+        if command -v "$tool" &>/dev/null; then
+            local p
+            p=$(command -v "$tool")
+            printf "  [OK]       %-16s -> %s\n" "$tool" "$p"
+        else
+            printf "  [MISSING]  %-16s -> Not found in PATH\n" "$tool"
+            all_passed=0
+        fi
+    done
+
+    # Check HaploCheck
+    if command -v haplocheck &>/dev/null; then
+        printf "  [OK]       %-16s -> %s\n" "haplocheck" "$(command -v haplocheck)"
+    elif [[ -x "$REPO_DIR/tools/haplocheck/haplocheck" ]]; then
+        printf "  [OK]       %-16s -> %s (bundled)\n" "haplocheck" "$REPO_DIR/tools/haplocheck/haplocheck"
+    else
+        printf "  [OPTIONAL] %-16s -> Not found (Haplogrouping will be skipped or stubbed)\n" "haplocheck"
+    fi
+
+    # Check Python modules
+    echo ""
+    echo "Checking Required Python Modules:"
+    python3 -c "
+import importlib
+modules = ['numpy', 'pandas', 'matplotlib', 'reportlab']
+for m in modules:
+    try:
+        importlib.import_module(m)
+        print(f'  [OK]       Python module: {m}')
+    except ImportError:
+        print(f'  [MISSING]  Python module: {m} (install via: pip install {m})')
+" || true
+
+    echo "================================================================================"
+    if [[ "$all_passed" -eq 1 ]]; then
+        echo "All primary dependencies are satisfied. MITOCLIN is ready to run."
+        return 0
+    else
+        echo "Some dependencies are missing. Please install missing tools via Conda or system package manager."
+        echo "Recommended: conda env create -f environment.yml && conda activate mitoclin"
+        return 1
+    fi
+}
+
+# Subcommand: check-env
+if [[ "${1:-}" == "--check-env" || "${1:-}" == "check-env" ]]; then
+    check_dependencies
+    exit $?
+fi
+
+# Subcommand: version
+if [[ "${1:-}" == "-v" || "${1:-}" == "--version" ]]; then
+    echo "MITOCLIN version $VERSION"
+    exit 0
+fi
+
+# Subcommand: help
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" || $# -eq 0 ]]; then
+    usage
+fi
+
+# Positional execution mode: mitoclin run <SAMPLE> <R1> <R2> [OUTDIR] [REF]
+if [[ "${1:-}" == "run" ]]; then
+    shift
+    if [[ $# -lt 3 ]]; then
+        echo "ERROR: 'run' requires at least 3 arguments: <sample_id> <r1> <r2>"
+        usage
+    fi
+    SAMPLE="$1"
+    R1="$2"
+    R2="$3"
+    OUTDIR="${4:-}"
+    REF="${5:-$DEFAULT_NUMT_REF}"
+    THREADS="${MITOCLIN_THREADS:-4}"
+    MIN_VAF="${MITOCLIN_MIN_VAF:-0.01}"
+else
+    # Flag parsing mode
+    SAMPLE=""
+    R1=""
+    R2=""
+    OUTDIR=""
+    REF="$DEFAULT_NUMT_REF"
+    THREADS="${MITOCLIN_THREADS:-4}"
+    MIN_VAF="${MITOCLIN_MIN_VAF:-0.01}"
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -s|--sample)
+                SAMPLE="$2"
+                shift 2
+                ;;
+            -1|--r1)
+                R1="$2"
+                shift 2
+                ;;
+            -2|--r2)
+                R2="$2"
+                shift 2
+                ;;
+            -o|--outdir)
+                OUTDIR="$2"
+                shift 2
+                ;;
+            -r|--reference)
+                REF="$2"
+                shift 2
+                ;;
+            -t|--threads)
+                THREADS="$2"
+                shift 2
+                ;;
+            --min-vaf)
+                MIN_VAF="$2"
+                shift 2
+                ;;
+            -h|--help)
+                usage
+                ;;
+            *)
+                echo "ERROR: Unknown option: $1"
+                usage
+                ;;
+        esac
+    done
+fi
+
+# Input validation
+if [[ -z "$SAMPLE" || -z "$R1" || -z "$R2" ]]; then
+    echo "ERROR: Missing required arguments. --sample, --r1, and --r2 must be specified."
+    usage
+fi
+
+if [[ ! -f "$R1" ]]; then
+    echo "ERROR: Forward FASTQ file not found: $R1"
+    exit 1
+fi
+
+if [[ ! -f "$R2" ]]; then
+    echo "ERROR: Reverse FASTQ file not found: $R2"
+    exit 1
+fi
+
+# Reference resolution
+if [[ "$REF" == "numt" || "$REF" == "default" ]]; then
+    REF="$DEFAULT_NUMT_REF"
+elif [[ "$REF" == "rcrs" ]]; then
+    REF="$DEFAULT_RCRS_REF"
+fi
+
+if [[ ! -f "$REF" ]]; then
+    echo "ERROR: Reference FASTA file not found: $REF"
+    exit 1
+fi
+
+# Resolve output directory
+if [[ -z "$OUTDIR" ]]; then
+    OUTDIR="$(pwd)/output_${SAMPLE}"
+fi
+
+export MITOCLIN_OUTDIR="$OUTDIR"
+export MITOCLIN_THREADS="$THREADS"
+export MITOCLIN_MIN_VAF="$MIN_VAF"
+export MITOCLIN_DB="$DEFAULT_DB_DIR"
+
+print_banner
+echo "Execution Parameters:"
+echo "  Sample ID    : $SAMPLE"
+echo "  Forward Reads: $R1"
+echo "  Reverse Reads: $R2"
+echo "  Reference    : $REF"
+echo "  Threads      : $THREADS"
+echo "  Min VAF      : $MIN_VAF"
+echo "  Output Dir   : $OUTDIR"
+echo "================================================================================"
+
+exec bash "$REPO_DIR/scripts/mtdna_analysis.sh" "$SAMPLE" "$R1" "$R2" "$REF"

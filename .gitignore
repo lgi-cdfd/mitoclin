@@ -1,0 +1,31 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Output directories from runs
+output_*/
+example_output/
+*.bam
+*.bai
+*.sam
+*.vcf
+*.vcf.gz
+*.vcf.gz.tbi
+*.tsv
+!database/*.tsv
+!database/*.csv
+!database/numts/*.tsv
+!database/numts/*.fasta
+!database/disease.vcf.gz
+!database/disease.vcf.gz.tbi
+!database/polymorphisms.vcf
+logs/
+tmp/
+*.tmp
+
+# OS generated files
+.DS_Store
+Thumbs.db
+*.swp
+*~

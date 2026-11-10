@@ -1,229 +1,297 @@
-<div align="center">
-
 # MITOCLIN
-### An Integrated Web Server & Automated Pipeline for High-Resolution Mitochondrial Genome Analysis, Heteroplasmy Quantification, and Clinical Pathogenicity Annotation
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-teal.svg)](https://opensource.org/licenses/MIT)
-[![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
-[![Flask 3.0](https://img.shields.io/badge/Framework-Flask_3.0-green.svg)](https://flask.palletsprojects.com/)
-[![Reference rCRS](https://img.shields.io/badge/Reference-rCRS_NC__012920.1-purple.svg)](https://www.ncbi.nlm.nih.gov/nuccore/NC_012920.1)
-[![Institution](https://img.shields.io/badge/BRIC--CDFD-Hyderabad_India-orange.svg)](https://cdfd.org.in/)
+### Automated Mitochondrial Genome Analysis and NUMT-Purified Variant Calling Framework
 
-</div>
+Laboratory of Human Molecular Genetics (LHMG)  
+Centre for DNA Fingerprinting and Diagnostics (BRIC-CDFD), Hyderabad, India  
 
 ---
 
-## Table of Contents
-- [Overview](#-overview)
-- [Key Features & Scientific Capabilities](#-key-features--scientific-capabilities)
-- [Platform Architecture](#-platform-architecture)
-- [Installation & Setup](#-installation--setup)
-- [Usage Modes](#-usage-modes)
-  - [1. Web Server Mode (GUI)](#1-web-server-mode-gui)
-  - [2. Command-Line Interface (CLI / Batch Mode)](#2-command-line-interface-cli--batch-mode)
-  - [3. Standalone Bioinformatic Pipeline (Bash)](#3-standalone-bioinformatic-pipeline-bash)
-- [Directory & File Structure](#-directory--file-structure)
-- [Output Reports & Visualizations](#-output-reports--visualizations)
-- [Biological Validation & Literature Framework](#-biological-validation--literature-framework)
-- [License](#-license)
-- [Citation & Contact](#-citation--contact)
+## 1. Overview
+
+MITOCLIN is an open-source, reproducible command-line workflow and computational toolkit engineered for high-throughput mitochondrial genomics, heteroplasmy quantification, and clinical variant prioritization from paired-end high-throughput sequencing (NGS) data.
+
+Accurate identification of mitochondrial DNA (mtDNA) variants is routinely confounded by Nuclear Mitochondrial DNA Segments (NUMTs)—ancient pseudogene fragments transposed from the ancestral mitochondrial genome into the human nuclear autosomes. When standard alignment protocols map sequencing reads exclusively against the revised Cambridge Reference Sequence (rCRS, NC_012920.1), nuclear pseudogene fragments align non-specifically to mtDNA, generating rampant false-positive low-frequency heteroplasmic variants (typically clustered between 5% and 20% Variant Allele Fraction).
+
+MITOCLIN addresses this fundamental challenge through a **competitive dual-alignment strategy**: sequencing reads are simultaneously aligned against a composite reference comprising the canonical human mitochondrial genome (NC_012920.1) and 766 nuclear NUMT decoy contigs (RHNumtS.2 / UCSC human NUMT catalog). Reads of nuclear origin preferentially anchor to their cognate autosomal contigs and are depleted away from the mitochondrial alignment. MITOCLIN subsequently performs non-diploid somatic/mitochondrial variant calling via GATK Mutect2, evaluates phylogenetic haplogroups and cross-sample contamination thresholds using HaploCheck (PhyloTree Build 17), and integrates offline clinical pathogenicity annotations against MITOMAP and gnomAD v3.1 nuclear pseudogene (`npg`) reference datasets.
 
 ---
 
-## Overview
-
-**MITOCLIN** is an end-to-end, automated web application and computational pipeline developed at the **Laboratory of Genome Informatics (LGI), Centre for DNA Fingerprinting and Diagnostics (CDFD), Hyderabad, India**.
-
-It bridges the gap between raw high-throughput Next-Generation Sequencing (NGS) data and actionable clinical insights by integrating sequence quality control, reference alignment, high-sensitivity variant calling, heteroplasmy quantification, contamination assessment, variant origin classification, disease annotation, and interactive clinical reporting into a unified workflow.
-
----
-
-## Key Features & Scientific Capabilities
-
-1. **Dual Somatic vs. Germline Variant Origin Engine**:
-   - **Germline Origin ($\text{VAF} \ge 95\%$ or Population Polymorphisms)**: Classifies inherited homoplasmic/high-grade alleles defining maternal haplogroups or ancestral traits.
-   - **Somatic Origin ($5\% \le \text{VAF} < 95\%$)**: Identifies post-zygotic heteroplasmic mutations acquired during tissue aging, oxidative stress, or tumorigenesis.
-
-2. **High-Sensitivity Variant Calling**:
-   - Powered by **GATK Mutect2** in mitochondrial mode (`--mitochondria-mode`), enabling detection of low-frequency heteroplasmy down to **5% Allele Fraction (VAF)** without homoplasmy bias.
-
-3. **LCA-Based Contamination Detection**:
-   - Integrated **HaploCheck (v1.3.3)** identifies sample contamination using Lowest Common Ancestor (LCA) phylogenetic distance across PhyloTree Build 17, discriminating true heteroplasmy from exogenous DNA mixtures.
-
-4. **Offline Clinical Database Annotation**:
-   - Direct matching against a locally curated **MITOMAP** database to report gene names, nucleotide/protein modifications, disease associations, and pathogenicity tiers (Pathogenic, Likely Pathogenic, VUS, Benign).
-
-5. **100% Parity HTML & PDF Diagnostic Reports**:
-   - Generates publication-ready, multi-page HTML dashboards and PDF clinical reports featuring institutional branding, executive stat cards, depth plots, heteroplasmy histograms, and 12-column variant summary tables.
-
----
-
-## Platform Architecture
+## 2. Pipeline Architecture & Workflow
 
 ```
-[Raw FASTQ / VCF Input]
-          │
-          ▼
-   ┌──────────────┐
-   │ FastQC 0.11  │  --> Read Quality Check
-   └──────┬───────┘
-          ▼
-   ┌──────────────┐
-   │ Trim Galore  │  --> Adapter Trimming & Quality Filtering (Q >= 20)
-   └──────┬───────┘
-          ▼
-   ┌──────────────┐
-   │ BWA-MEM      │  --> rCRS NC_012920.1 Alignment & MarkDuplicates
-   └──────┬───────┘
-          ▼
-   ┌──────────────┐
-   │ GATK Mutect2 │  --> Mitochondria-Mode Variant Calling & Filtering
-   └──────┬───────┘
-          ▼
-   ┌──────────────┐
-   │ BCFtools     │  --> Heteroplasmy Fraction: VAF = AD / (RD + AD)
-   └──────┬───────┘
-          ▼
-   ┌──────────────┐
-   │ HaploCheck   │  --> Major/Minor Haplogroups & LCA Contamination
-   └──────┬───────┘
-          ▼
-   ┌──────────────┐
-   │ MITOMAP Local│  --> Disease Annotation & Somatic/Germline Origin
-   └──────┬───────┘
-          ▼
-   ┌──────────────┐
-   │ HTML & PDF   │  --> Executive Diagnostic Reports & VCF Outputs
-   └──────────────┘
+Raw Paired-End FASTQs (R1 & R2)
+               │
+               ▼
+   [Step 0: Read Pair Synchronization] (repair_fastq_pairs.py)
+               │
+   ┌───────────┴───────────────────────┐
+   ▼                                   ▼
+[Step 1: FastQC Quality Profiling]   [Step 2: Adapter & Quality Trimming]
+                                                (Trim Galore / Cutadapt)
+                                       │
+                                       ▼
+                     [Step 3: Competitive Alignment (BWA-MEM)]
+                     rCRS (NC_012920.1) + 766 Nuclear NUMT Decoys
+                                       │
+                                       ▼
+                     [Step 4: NUMT Depletion & Coordinate Normalization]
+                     (numt_engine.py -> Extract authentic mtDNA BAM)
+                                       │
+                                       ▼
+                     [Step 5: Duplicate Marking (GATK MarkDuplicates)]
+                                       │
+                     ┌─────────────────┴─────────────────┐
+                     ▼                                   ▼
+          [Step 6: BAM QC & Stats]            [Step 7: Per-Base Coverage]
+          (samtools flagstat/idxstats)        (samtools depth, mean coverage)
+                     │                                   │
+                     └─────────────────┬─────────────────┘
+                                       │
+                                       ▼
+                     [Step 8: Variant Discovery (GATK Mutect2)]
+                     (--mitochondria-mode, native PairHMM)
+                                       │
+                                       ▼
+                     [Step 9-14: Variant Filtering & Allelic Splitting]
+                     (GATK FilterMutectCalls, BCFtools norm, VAF >= 1%)
+                                       │
+                     ┌─────────────────┴─────────────────┐
+                     ▼                                   ▼
+          [Step 15: Haplogroup & Contam]     [Step 16-17: Pathogenicity Curation]
+          (HaploCheck, PhyloTree B17)        (MITOMAP local offline DB)
+                     │                                   │
+                     └─────────────────┬─────────────────┘
+                                       │
+                                       ▼
+                     [Step 18: Variant NUMT & gnomAD Annotation]
+                     (gnomAD v3.1 npg filter + UCSC NUMT homology)
+                                       │
+                                       ▼
+                     Final Standardized Clinical TSV & VCF
 ```
+
+### Detailed Execution Steps
+
+1. **Read Pair Synchronization:** Validates that paired FASTQ files contain identical, synchronized read identifiers, repairing interleaved discrepancies before execution.
+2. **Quality Control & Adapter Trimming:** Computes base quality profiles (FastQC) and strips adapter sequences and low-quality 3' ends with a Phred score cutoff of Q30 (Trim Galore / Cutadapt).
+3. **Competitive Decoy Alignment:** Aligns trimmed reads using BWA-MEM against the composite `rCRS_plus_NUMTs` reference. Reads exhibiting higher homology to nuclear paralogs align to the decoy contigs, preventing artifactual misattribution.
+4. **NUMT Depletion & Filtering:** Extracts authentic NC_012920.1 mitochondrial alignments, sorts coordinates, indexes BAMs, and exports granular read absorption statistics.
+5. **Duplicate Marking:** Identifies and tags optical and PCR duplicate read pairs using GATK MarkDuplicates.
+6. **Coverage Depth Profiling:** Generates comprehensive per-nucleotide depth profiles across all 16,569 bp, calculating overall mean coverage depth and regional uniformity metrics.
+7. **Mitochondrial Variant Discovery:** Calls non-diploid SNPs and INDELs using GATK Mutect2 in `--mitochondria-mode` with strand-bias modeling.
+8. **Variant Quality & Heteroplasmy Filtering:** Executes GATK FilterMutectCalls, splits multiallelic sites using BCFtools, and derives exact per-allele Variant Allele Fractions (VAF = Alternate Depth / Total Depth).
+9. **Haplogroup & Contamination Assessment:** Leverages HaploCheck against PhyloTree Build 17 using Lowest Common Ancestor (LCA) distance, estimating major and minor haplogroup lineages and detecting sample-mix contamination down to 1.8% minor fraction.
+10. **Clinical Pathogenicity Annotation:** Annotates variants against a curated local MITOMAP database (coding control mutations, rRNA/tRNA alterations, and confirmed pathogenic mutations) without requiring external web requests.
+11. **NUMT Knowledgebase Cross-Referencing:** Tags variant calls against Broad Institute gnomAD v3.1 `npg` (nuclear pseudogene) flag sites and coordinates intersecting known human nuclear NUMT intervals.
 
 ---
 
-## Installation & Setup
+## 3. System Requirements & Dependencies
 
-### Prerequisites
-- **Operating System**: Linux (Ubuntu 20.04/22.04 LTS recommended)
-- **Python**: Version 3.10 or higher
-- **Bioinformatics Command-Line Tools**: `fastqc`, `trim_galore`, `bwa`, `samtools`, `bcftools`, `gatk` (v4.2.6+), `haplocheck` (v1.3.3)
+### Hardware Requirements
+* **Operating System:** Linux (CentOS 7+, RHEL 8+, Ubuntu 18.04+, Debian 10+) or macOS.
+* **Processor:** 64-bit x86_64 architecture, minimum 4 CPU cores (8+ cores recommended for high throughput).
+* **Memory (RAM):** 8 GB minimum, 16 GB recommended for high-depth coverage libraries.
+* **Storage:** 10 GB free disk space for references, databases, and temporary alignment files.
 
-### Quick Installation
+### Bioinformatic Tool Dependencies
+MITOCLIN requires the following standard command-line tools in your environment:
+* **BWA** (`>= 0.7.17`)
+* **SAMtools** (`>= 1.15`)
+* **BCFtools** (`>= 1.15`)
+* **GATK4** (`>= 4.2.0.0`)
+* **FastQC** (`>= 0.11.9`)
+* **Trim Galore** (`>= 0.6.7`) / **Cutadapt** (`>= 3.4`)
+* **Java Runtime Environment (JRE)** (`>= 17`)
+* **Python** (`>= 3.9`) with packages: `numpy`, `pandas`, `matplotlib`, `reportlab`
+
+---
+
+## 4. Installation
+
+### Method A: Conda / Mamba Environment (Recommended)
+
+The most reliable and reproducible installation method is via Conda:
+
+```bash
+# 1. Clone the MITOCLIN repository
+git clone https://github.com/lgi-cdfd/mitoclin.git
+cd mitoclin
+
+# 2. Create and activate the conda environment
+conda env create -f environment.yml
+conda activate mitoclin
+
+# 3. Verify environment configuration
+./mitoclin --check-env
+```
+
+### Method B: Manual Installation in an Existing Environment
+
+If your system or cluster module already contains BWA, SAMtools, GATK4, and Python:
 
 ```bash
 # Clone the repository
 git clone https://github.com/lgi-cdfd/mitoclin.git
-cd mitoclin/
+cd mitoclin
 
-# Install Python dependencies
+# Install required Python dependencies
 pip install -r requirements.txt
+
+# Run the environment pre-flight validator
+./mitoclin --check-env
 ```
 
 ---
 
-## Usage Modes
+## 5. Quick Start Tutorial
 
-### 1. Web Server Mode (GUI)
-Host the full interactive web platform for researchers and clinicians:
+To verify that MITOCLIN is operating correctly on your system, execute the bundled test script:
 
 ```bash
-# Direct Python start
-python3 mitoclin_app.py --host 0.0.0.0 --port 5005
-
-# Or via shell wrapper script
-cd mitoclin_server/
-bash run_server.sh 5005
+cd mitoclin
+bash example/run_example.sh
 ```
-Access the web dashboard in your browser at `http://<SERVER_IP>:5005`.
+
+This runs the complete 18-step pipeline on a bundled paired-end test FASTQ dataset in under one minute and produces an output directory (`example_output/`) with indexed BAMs, filtered VCFs, coverage metrics, and the finalized clinical TSV report.
 
 ---
 
-### 2. Command-Line Interface (CLI / Batch Mode)
-Generate publication-ready HTML and PDF clinical reports directly from a VCF or pipeline TSV file without launching the web server:
+## 6. Command-Line Usage
 
 ```bash
-# Generate reports from a VCF file:
-python3 mitoclin_app.py --report-only \
-  --sample SAMPLE_01 \
-  --vcf /path/to/sample.vcf \
-  --outdir /path/to/output_dir/
-
-# Generate reports from pipeline final_report.tsv:
-python3 mitoclin_app.py --report-only \
-  --sample SAMPLE_01 \
-  --csv /path/to/sample_final_report.tsv \
-  --outdir /path/to/output_dir/
+./mitoclin [options] -s <SAMPLE_ID> -1 <R1.fastq.gz> -2 <R2.fastq.gz>
 ```
 
----
+### Argument Reference
 
-### 3. Standalone Bioinformatic Pipeline (Bash)
-Execute the complete bioinformatic workflow on raw FASTQ files via command line:
+| Option | Flag | Description | Default |
+| :--- | :--- | :--- | :--- |
+| `--sample` | `-s` | Unique sample identifier (alphanumeric, dashes, underscores) | Required |
+| `--r1` | `-1` | Path to forward paired-end FASTQ (`.fastq`, `.fq.gz`) | Required |
+| `--r2` | `-2` | Path to reverse paired-end FASTQ (`.fastq`, `.fq.gz`) | Required |
+| `--outdir` | `-o` | Output directory destination | `./output_<SAMPLE_ID>` |
+| `--reference` | `-r` | Reference genome FASTA (`numt`, `rcrs`, or custom path) | `rCRS_plus_NUMTs.fasta` |
+| `--threads` | `-t` | Number of CPU cores for multi-threaded alignment & calling | `4` |
+| `--min-vaf` | | Minimum Variant Allele Fraction cutoff | `0.01` (1% VAF) |
+| `--check-env` | | Perform pre-flight dependency check and exit | — |
+| `--help` | `-h` | Display usage instructions and exit | — |
 
+### Execution Examples
+
+#### 1. Standard Clinical Run (NUMT-Aware Competitive Alignment)
 ```bash
-bash mtdna_analysis.sh \
-  -1 sample_R1.fastq.gz \
-  -2 sample_R2.fastq.gz \
-  -s SAMPLE_01 \
-  -o output_SAMPLE_01/
+./mitoclin \
+    --sample Patient01 \
+    --r1 data/Patient01_R1.fastq.gz \
+    --r2 data/Patient01_R2.fastq.gz \
+    --outdir results/Patient01 \
+    --threads 8
+```
+
+#### 2. Fast Screening Mode (rCRS-Only Alignment)
+To run in standard rCRS-only mode without nuclear decoy contigs:
+```bash
+./mitoclin \
+    --sample Patient01 \
+    --r1 data/Patient01_R1.fastq.gz \
+    --r2 data/Patient01_R2.fastq.gz \
+    --reference rcrs \
+    --threads 4
+```
+
+#### 3. Positional Shorthand Syntax
+```bash
+./mitoclin run Patient01 data/Patient01_R1.fq.gz data/Patient01_R2.fq.gz results/Patient01
 ```
 
 ---
 
-## Directory & File Structure
+## 7. Directory Structure and Output Files
+
+Following execution, the output directory is structured as follows:
 
 ```
-mitoclin/
-├── mitoclin_app.py            # Flask web application & HTML/PDF report engine
-├── mtdna_analysis.sh          # Core bioinformatic execution pipeline
-├── requirements.txt           # Python dependencies
-├── run_server.sh              # Web server startup script
-├── draft_mitoclin_paper.docx  # Publication manuscript document
-├── database/                  # Curated MITOMAP & polymorphism databases
-├── reference/                 # rCRS FASTA reference & index files
-├── figures/                   # High-resolution 300 DPI publication figures
-└── output_*/                  # Sample-specific analytical output directories
+output_<SAMPLE_ID>/
+├── 01_raw_fastqc/              # Raw sequence quality reports (HTML, ZIP)
+├── 02_trimmed/                 # Adapter-trimmed and synchronized FASTQ reads
+├── 03_mapping/
+│   ├── <SAMPLE>_sorted.bam     # Coordinated-sorted mitochondrial BAM
+│   ├── <SAMPLE>_sorted.bam.bai # BAM index
+│   ├── <SAMPLE>_dedup.bam      # Deduplicated mitochondrial BAM
+│   ├── <SAMPLE>_dedup.bam.bai  # Deduplicated BAM index
+│   └── <SAMPLE>_numt_depletion.json # Quantitative NUMT read depletion metrics
+├── 04_variant_calling/
+│   ├── <SAMPLE>_unfiltered.vcf # Raw candidate variant calls (Mutect2)
+│   ├── <SAMPLE>_filtered.vcf   # Filtered variants passing quality criteria
+│   └── <SAMPLE>_snps.vcf       # Cleaned, biallelic mitochondrial SNPs
+├── 05_bam_stats/               # Alignment statistics (flagstat, idxstats, stats)
+├── 06_coverage/
+│   ├── <SAMPLE>_coverage.txt   # Per-base read depth across 16,569 bp
+│   └── <SAMPLE>_mean_coverage.txt # Mean cohort coverage summary
+├── 07_haplocheck/
+│   └── <SAMPLE>_haplocheck.tsv # Major/minor haplogroups and contamination %
+├── 09_mitomaster/              # Parsed mutational functional annotations
+├── 10_final_report_data/
+│   └── <SAMPLE>_final_report.tsv # Primary finalized clinical report table
+└── logs/                       # Comprehensive step-by-step stdout/stderr runtime logs
 ```
 
----
+### Primary Output Table Columns (`_final_report.tsv`)
 
-## Output Reports & Visualizations
+The primary deliverable is a tab-delimited file containing prioritized, clinically curated variant information:
 
-Every completed analysis produces:
-1. **Interactive HTML Clinical Report** (`<sample>_mitoclin_report.html`)
-2. **Publication-Grade PDF Clinical Report** (`<sample>_mitoclin_report.pdf`)
-3. **Filtered Variant Call Format** (`<sample>_final_variants.vcf`)
-4. **Annotated Summary Table** (`<sample>_final_report.tsv`)
-
-### Executive Report Sections:
-- **Header & Institutional Branding**: BRIC-CDFD logo and metadata bar.
-- **Executive Stat Cards**: Mean Coverage, Pathogenic, Likely Pathogenic, VUS, Benign, Germline, Somatic, and Total Variants.
-- **Quality Control Summary**: Coverage depth, HaploCheck contamination score, major/minor haplogroups, heteroplasmy cutoff (5% AF), and GATK Mutect2 status.
-- **Clinical Interpretation Summary**: Haplogroup badge and automated clinical text narrative.
-- **Visual Plots**: 16,569 bp rCRS coverage depth chart, VAF frequency distribution histogram, and pathogenicity pie chart.
-- **12-Column Variant Summary Table**: POS, REF, ALT, Mutation, Type, Gene, Protein/RNA, Disease, HET %, Pathogenicity, Origin, Coverage.
-
----
-
-## Biological Validation & Literature Framework
-
-MITOCLIN algorithms adhere strictly to published clinical guidelines:
-- **ACMG/AMP Guidelines**: McCormick, E. M., et al. (2020). *Specifications of the ACMG/AMP variant interpretation guidelines for mitochondrial DNA variants*. Human Mutation, 41(12), 2028–2057.
-- **HaploCheck Contamination**: Weissensteiner, H., et al. (2021). *HaploCheck: contamination detection in sequencing data using the mitochondrial phylogenetic tree*. Genome Medicine, 13(1), 56.
-- **MITOMAP Database**: Lott, M. T., et al. (2013). *mtDNA Variation and Analysis Using MITOMAP and MITOMASTER*. Current Protocols in Bioinformatics, 44(1), 1.23.1–1.23.26.
-
----
-
-## License
-
-This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details. Free for academic, clinical, and research use.
+| Column Header | Description |
+| :--- | :--- |
+| `Sample` | Sample identifier |
+| `POS` | Genomic coordinate on rCRS (1..16,569) |
+| `REF` | Reference nucleotide allele |
+| `ALT` | Alternate nucleotide allele |
+| `Mutation` | Standard mitochondrial HGVS nomenclature (e.g., `m.11778G>A`) |
+| `Gene` | Mitochondrial gene symbol (*MT-ND4*, *MT-ATP6*, *MT-TL1*, etc.) |
+| `Protein_Change` | Amino acid alteration (e.g., `p.R340H`) |
+| `Disease` | Curated disease association (LHON, Leigh, MELAS, MERRF) |
+| `Pathogenicity` | Clinical classification (Confirmed Pathogenic, Likely Pathogenic, Polymorphism) |
+| `Coverage` | Read depth at the specific variant site ($DP$) |
+| `Mean_Coverage` | Overall whole-mitochondrial mean coverage |
+| `Major_Haplogroup` | Primary phylogenetic lineage assigned by PhyloTree Build 17 |
+| `Minor_Haplogroup` | Secondary lineage detected (indicative of mixture) |
+| `Contamination_Status` | Sample contamination verdict (`YES` / `NO`) |
+| `Contamination_Pct` | Quantified exogenous mixture fraction (%) |
+| `Variant_Allele_Fraction` | Heteroplasmy percentage ($\text{VAF} = \frac{AD}{DP} \times 100\%$) |
+| `Origin` | Biological categorization: `Germline` (homoplasmic) vs. `Somatic` (heteroplasmic) |
+| `NUMT_Homology` | Overlapping nuclear NUMT contig identifier and pseudogene locus |
+| `gnomAD_npg_Status` | Broad Institute gnomAD v3.1 nuclear pseudogene artifact flag |
 
 ---
 
-## Citation & Contact
+## 8. Benchmark Validation & Analytical Performance
 
-If you use **MITOCLIN** in your research or clinical diagnostics, please cite:
+MITOCLIN’s analytical accuracy and NUMT-depletion capabilities were benchmarked across a cohort of **128 clinical patient mitochondrial genomes** sequenced at ultra-deep coverage (mean coverage: **13,787×** depth) at the Centre for DNA Fingerprinting and Diagnostics (CDFD):
 
-> Eerapagula, R., Yadav, A., & Mahato, A. K. (2026). *MITOCLIN: An Integrated Web Server and Automated Pipeline for High-Resolution Mitochondrial Genome Analysis, Heteroplasmy Quantification, and Clinical Pathogenicity Annotation*. Laboratory of Genome Informatics, Centre for DNA Fingerprinting and Diagnostics (CDFD), Hyderabad, India.
+* **Orthogonal Clinical Concordance:** Evaluated against confirmed diagnostic cases (LHON $m.11778G>A$, $m.3460G>A$, $m.14484T>C$; Leigh Syndrome $m.8993T>G/C$; MERRF $m.8344A>G$) verified by diagnostic capillary sequencing, achieving 100% concordance.
+* **NUMT Pseudogene Purging:** Competitive dual-alignment against 766 nuclear NUMT contigs absorbed **63,230,940 nuclear reads** away from the mitochondrial alignment, purging **527 false NUMT-derived heteroplasmies** (a **55.7% reduction** in false low-frequency variants in the 5%–20% VAF window) while retaining 100% of authentic biological homoplasmies ($\ge 95\%$ VAF).
+* **Contamination Sensitivity:** Integrated HaploCheck engine with PhyloTree Build 17 LCA distance reliably detects cross-sample contamination down to a **1.8%** minor haplotype fraction ($F_{\text{minor}} = 0.018$).
+* **Limit of Detection (LOD):** Under ultra-deep sequencing coverage ($>5,000\times$), dual-strand read support provides a reliable Limit of Detection of **1.00% VAF**.
 
-- **Institution**: Centre for DNA Fingerprinting and Diagnostics (CDFD), Hyderabad, Telangana, India
-- **Repository**: [github.com/lgi-cdfd/mitoclin](https://github.com/lgi-cdfd/mitoclin)
-- **Contact**: Dr. Ajay Kumar Mahato (`akmlgi2021@gmail.com`)
+---
+
+## 9. Citation & Institutional Affiliation
+
+If you use MITOCLIN in your research, please cite:
+
+> **MITOCLIN: An Automated Computational Pipeline and Web Platform for Clinical Mitochondrial Genome Analysis and NUMT-Purified Variant Calling.**  
+> Laboratory of Human Molecular Genetics (LHMG),  
+> Centre for DNA Fingerprinting and Diagnostics (BRIC-CDFD), Hyderabad, Telangana, India.  
+> Repository: [https://github.com/lgi-cdfd/mitoclin](https://github.com/lgi-cdfd/mitoclin)
+
+For inquiries, clinical collaboration, or bug reports, please contact:
+* **Dr. Ajay Kumar Mahato** (Principal Investigator / Corresponding Author): `ajay@cdfd.org.in`
+* **Laboratory of Human Molecular Genetics (LHMG)**, BRIC-CDFD, Hyderabad, India.
+
+---
+
+## 10. License
+
+This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for complete details.

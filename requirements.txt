@@ -1,0 +1,6 @@
+# MITOCLIN — Python Dependencies
+numpy>=1.20.0
+pandas>=1.4.0
+matplotlib>=3.5.0
+reportlab>=3.6.0
+requests>=2.28.0
