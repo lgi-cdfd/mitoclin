@@ -1,9 +1,22 @@
+<div align="center">
+
 # MITOCLIN
 
 ### Automated Mitochondrial Genome Analysis and NUMT-Purified Variant Calling Framework
 
-Laboratory of Genome Informatics (LGI)  
-Centre for DNA Fingerprinting and Diagnostics (BRIC-CDFD), Hyderabad, India  
+**Laboratory of Genome Informatics (LGI)**  
+**Centre for DNA Fingerprinting and Diagnostics (BRIC-CDFD), Hyderabad, India**
+
+[![Release](https://img.shields.io/badge/Release-v2.1.0-blue.svg?style=flat-square)](https://github.com/lgi-cdfd/mitoclin/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-teal.svg?style=flat-square)](https://opensource.org/licenses/MIT)
+[![Python](https://img.shields.io/badge/Python-3.9%2B-informational.svg?style=flat-square)](https://www.python.org/)
+[![Conda](https://img.shields.io/badge/Environment-Conda%20%7C%20Bioconda-brightgreen.svg?style=flat-square)](https://bioconda.github.io/)
+[![Reference](https://img.shields.io/badge/Reference-rCRS%20(NC__012920.1)-purple.svg?style=flat-square)](https://www.ncbi.nlm.nih.gov/nuccore/NC_012920.1)
+[![NUMT Decoys](https://img.shields.io/badge/NUMT%20Decoys-766%20Contigs-orange.svg?style=flat-square)](https://genome.ucsc.edu/)
+[![PhyloTree](https://img.shields.io/badge/PhyloTree-Build%2017-forestgreen.svg?style=flat-square)](https://www.phylotree.org/)
+[![Institution](https://img.shields.io/badge/Institution-BRIC--CDFD%20%7C%20LGI-crimson.svg?style=flat-square)](https://cdfd.org.in/)
+
+</div>
 
 ---
 
